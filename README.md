@@ -31,16 +31,18 @@ The audio work is split into small files so each class has one clear responsibil
 
 ## Getting Started
 
-The easiest way to run the app is with Docker from the project root. This starts both the Rails app and the PostgreSQL database together.
+The easiest way to run the app is with Docker from the project root. On a fresh setup, start the database first, initialize the Rails database, and then start the app.
 
 ```sh
+docker-compose up -d db
+docker-compose run --rm server bin/rails db:setup
 docker-compose up --build
 ```
 
-If the database has not been initialized yet, run:
+After the first setup, you can usually run:
 
 ```sh
-docker-compose run --rm server bin/rails db:setup
+docker-compose up --build
 ```
 
 The API will be available at `http://localhost:3000`.
@@ -115,6 +117,8 @@ It inspects the details of the data right before saving. If something is wrong, 
 
 ### 3. DB-Level Constraints
 This is the ultimate, unbreakable layer built directly into our PostgreSQL database. Even if a bug in our code bypasses the first two layers, the database will physically block duplicate or invalid data from corrupting our tables. Few examples are uniqueness constraints, not null contraints etc.
+
+A key example is the unique index on `audio_uploads.file_hash`. This ensures that the same MP3 content cannot be saved twice, while also making duplicate lookups fast and efficient at query time.
 
 ### Step-by-Step File Journey
 When a file is uploaded, it goes through 3 quick steps:
