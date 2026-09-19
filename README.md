@@ -6,27 +6,14 @@ Audio upload and analysis service.
 
 SoundScan is focused on taking an uploaded MP3 file, reading its metadata, checking whether it has already been processed, scoring its audio quality, and returning a clean JSON response.
 
-The work documented here is limited to the audio analysis service layer:
-
-- `server/app/services/audio/analyzer.rb`
-- `server/app/services/audio/analysis_serializer.rb`
-- `server/app/services/audio/outlier_detector.rb`
-- `server/app/services/audio/outlier_rules.rb`
-- `server/app/services/audio_uploads/analysis_error.rb`
-
-Together, these files form the core flow for an upload: extract MP3 metadata, validate the file, detect duplicates, evaluate quality outliers, save the analysis record, and serialize the result for the API response.
-
 ## Tech Stack
 
-This part of the project is built with Ruby on Rails on the backend. The audio metadata is read with `ruby-mp3info`, while Rails models and Active Record handle saving each analysis result.
+The project is built with Ruby on Rails on the backend. The audio metadata is read with `ruby-mp3info`, while Rails models and Active Record handle saving each analysis result.
 
-The main technical pieces used in the files above are:
+The main technical pieces are:
 
-- Ruby service objects for keeping the upload analysis logic organized.
 - `ruby-mp3info` for reading MP3 duration, bitrate, sample rate, and header data.
 - `Digest::SHA256` for creating a stable file hash and detecting duplicate uploads.
-- Active Record for saving the final `AudioUpload` analysis record.
-- Custom error classes so analysis failures can be handled clearly by the API layer.
 
 ## Project Structure
 
@@ -44,7 +31,21 @@ The audio work is split into small files so each class has one clear responsibil
 
 ## Getting Started
 
-The analysis code lives inside the Rails server, so run setup commands from the `server` folder.
+The easiest way to run the app is with Docker from the project root. This starts both the Rails app and the PostgreSQL database together.
+
+```sh
+docker-compose up --build
+```
+
+If the database has not been initialized yet, run:
+
+```sh
+docker-compose run --rm server bin/rails db:setup
+```
+
+The API will be available at `http://localhost:3000`.
+
+If you want to run the Rails app directly on your machine instead, you can still do it from the `server` folder:
 
 ```sh
 cd server
@@ -53,17 +54,16 @@ bin/rails db:setup
 bin/rails server
 ```
 
-
 ## API
-
-The upload flow is used by the JSON API endpoint:
-
-```http
-POST /api/upload
-Content-Type: multipart/form-data
-```
-
-The request should include an `audio` file parameter containing an MP3 file.
+### Call with Postman
+To test this endpoint using Postman, configure your request using the following steps:
+1. Set the HTTP method dropdown to POST
+2. Enter your API endpoint URL (e.g., http://localhost:3000/api/upload).
+3. Navigate to the Headers tab.
+4. Add the following key-value pair: Key: Accept and Value: application/json
+5. Navigate to the Body tab..
+6. Select the form-data option and set Key 'audio'. Hover over the input box, click the dropdown menu that appears on the right side of the field, and change the type from Text to File.
+7. Select the file and send
 
 On success, the analyzer returns a response shaped like this:
 
@@ -86,14 +86,15 @@ On success, the analyzer returns a response shaped like this:
 }
 ```
 
-If the file cannot be analyzed, the custom analysis error allows the API to return a clear failure response instead of an unexpected server error.
-
 ## Testing
+Added unit specs in two files:
+- `server/spec/models/audio_upload_spec.rb`
+- `server/spec/requests/api/audio_uploads_spec.rb`
 
 To run unit specs execute:
 
 ```bash
-docker-compose run server bundle exec rspec --format documentation
+docker-compose run --rm -e RAILS_ENV=test server bundle exec rspec --format documentation
 ```
 
 ## Architecture
