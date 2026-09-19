@@ -15,24 +15,15 @@ module Audio
     end
 
     def analyze
-      #   validate_audio_file
+      @metadata = extract_audio_metadata
+      validate_audio_file
       check_if_duplicate
 
-      @metadata = extract_audio_metadata
       check_if_outlier
       AnalysisSerializer.call(save_analysis, outliers: @outliers)
     end
 
     private
-
-    def validate_audio_file!
-      raise AudioUploads::InvalidFileError, "Audio file is required" unless ValidMp3File.call(@audio_file)
-    end
-
-    def check_if_duplicate
-      @file_hash = Digest::SHA256.file(@tempfile_path).hexdigest
-      raise AudioUploads::DuplicateError, "Duplicate file upload detected" if AudioUpload.exists?(file_hash: @file_hash)
-    end
 
     def extract_audio_metadata
       Mp3Info.open(@tempfile_path) do |mp3|
@@ -40,6 +31,23 @@ module Audio
       end
     rescue StandardError => error
       raise AudioUploads::AnalysisError, error.message
+    end
+
+    def validate_audio_file
+      raise AudioUploads::InvalidFileError, "Audio file is required" unless valid_mp3_structure?
+    end
+
+    def valid_mp3_structure?
+      return false unless @audio_file.original_filename.downcase.end_with?(".mp3")
+      return false if @metadata.header[:emphasis] == 3 
+      return false if @metadata.header[:layer] != 3
+
+      true
+    end
+
+    def check_if_duplicate
+      @file_hash = Digest::SHA256.file(@tempfile_path).hexdigest
+      raise AudioUploads::DuplicateError, "Duplicate file upload detected" if AudioUpload.exists?(file_hash: @file_hash)
     end
 
     def check_if_outlier
