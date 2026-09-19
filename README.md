@@ -104,8 +104,6 @@ bin/rails test
 
 ## Architecture
 
-The flow is intentionally simple and service-driven.
-
 An upload enters through `Audio::Analyzer.call`. The analyzer extracts metadata with `Mp3Info`, rejects invalid MP3 structure, hashes the file contents with SHA-256, and checks the database for an existing upload with the same hash.
 
 After that, `Audio::OutlierDetector` calculates the quality score. Critical rules take priority because they represent stronger signals that the file is outside the expected range. If no critical rule applies, the detector checks moderate rules and subtracts their penalties from a starting score of 10.
@@ -114,34 +112,28 @@ Once the record is saved, `Audio::AnalysisSerializer` turns the `AudioUpload` mo
 
 ## Outlier Logic
 
-The outlier logic is based on a simple assumption: unusual duration, bitrate, or sample rate values are useful early signals that an MP3 may not be a normal-quality upload.
+We have two types of outliers, the critical and the moderate outlier, each containing two seperate parameters to identify where it lies. The outlier logic is assuming that we have unusual duration, bitrate, or sample rate values that signals that an MP3 may not be of a normal-quality.
 
-The score starts at `10`. If a critical rule matches, only that critical rule is used and its penalty is subtracted. At the moment, critical rules include files shorter than 5 seconds, longer than 900 seconds, or files with a bitrate above 340 kbps. Each critical rule subtracts `9`, which leaves the upload with a score of `1`.
+The score starts at `10`. If a critical rule matches, the system then skips to check other rules and straight away subtracts `9`, which leaves the upload with a score of `1`. At the moment, critical rules include files shorter than 5 seconds, longer than 900 seconds( less value indicates file sample is too less to analyze, higher value indicates its probably too long to analyze assuming we are analyzing mp3 music files only), or files with a bitrate above 340 kbps( indicates its fake or currupted file).
 
-If no critical rule matches, the detector checks moderate rules instead. A bitrate below 96 kbps subtracts `4`, and a sample rate below 3200 Hz subtracts `3`. The remaining value becomes the final `quality_score`.
+If no critical rule matches, the detector checks moderate rules instead. A bitrate below 96 kbps subtracts `4`, and a sample rate below 3200 Hz subtracts `3`. Adds total outliers score and subtract it from 10.
 
 These signals were chosen because they are available directly from MP3 metadata and are quick to evaluate. Duration catches files that are too short to be useful or too long for the expected upload range, bitrate helps flag very low-quality or unusually large files, and sample rate helps catch audio that may sound poor or be encoded below normal expectations.
 
 ## Assumptions
-
-The current implementation assumes the uploaded file should be an MP3 and that checking the `.mp3` extension plus MP3 header details is enough for this stage of the project.
-
-It also assumes duplicate detection should be based on the exact file contents. If the same audio is uploaded with even a tiny byte-level change, it will receive a different SHA-256 hash and will not be treated as the same file.
-
-The outlier rules are intentionally heuristic. They do not prove that an audio file is good or bad; they give the API a lightweight way to flag files that deserve attention.
+1. **Format Scope:** The current implementation assumes that our system only analyzes and processes MP3 music files with a maximum duration of 15 minutes.
+2. **Originality Verification:** The system assumes that checking the `.mp3` extension along with MP3 header profiles (including emphasis and layer values) is sufficient to verify file originality.
+3. **Tamper Indicators:** The design assumes that a header configuration where `emphasis == 3` or `layer != 3` indicates that a file extension has been tampered with.
+4. **Duplicate Safeguards:** The detection layer assumes duplicate files should be identified solely using an exact matching SHA-256 hash footprint.
 
 ## Trade-offs
-
-The analyzer handles several steps in one place, which keeps the upload flow easy to follow. The trade-off is that it has a few responsibilities: metadata extraction, validation, duplicate checking, outlier scoring, and saving. If the flow grows, some of those steps could be split into smaller collaborators.
-
-The outlier rules are simple Ruby hashes with lambdas. This keeps them readable and easy to change, but it does mean there is no separate rule engine or admin-managed configuration.
-
-The stored `storage_path` is the temporary upload path used during analysis. That is enough for recording what was processed during this flow, but it is not the same as long-term file storage.
+1. **Fast execution over Deep Inspection**  Used lightweight mp3info for metadata inspection over deep audio inspection which could require more dependencies.
+2. **Easy setup over Production-grade Security** By sticking only to mp3info header checks are acquire simple codebase and requires no extra installation.
 
 ## Future Improvements
 
-Future work could add more detailed audio checks, such as codec validation, channel count, loudness, clipping, or corrupted-frame detection.
+Future work could add more detailed audio checks, such as loudness, clipping and analyzing sound.
 
-The outlier rules could also be expanded with clearer severity levels, rule descriptions, and user-facing messages instead of returning only rule codes.
+The outlier rules could also be expanded after analyzing the sound, loudness etc.
 
 Dedicated tests for the analyzer, serializer, detector, and rules would make the service safer to change. A later version could also move permanent file storage into Active Storage or another storage service if uploaded audio needs to be kept after analysis.
