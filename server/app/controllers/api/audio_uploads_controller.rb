@@ -10,6 +10,6 @@ class Api::AudioUploadsController < ApplicationController
   private
 
   def upload_file
-    params.permit(:title, :audio)
+    params.permit(:audio)
   end
 end

@@ -24,7 +24,7 @@ RSpec.describe "Audio uploads", type: :request do
       metadata: {
         filename: "sample.mp3",
         bitrate_kbps: 128,
-        sample_rate_hz: 44_100
+        sample_rate_hz: 44100
       }
     }
 

@@ -51,11 +51,11 @@ RSpec.describe AudioUpload, type: :model do
     expect(duplicate.errors[:file_hash]).to include("has already been processed")
   end
 
-  it "requires duration to be greater than zero" do
-    upload = described_class.new(valid_attributes.merge(duration: 0))
+  it "requires duration to be greater than 5" do
+    upload = described_class.new(valid_attributes.merge(duration: 1))
 
     expect(upload).not_to be_valid
-    expect(upload.errors[:duration]).to include("must be greater than 0")
+    expect(upload.errors[:duration]).to include("must be greater than 5")
   end
 
   it "requires quality score to be between 1 and 10" do
