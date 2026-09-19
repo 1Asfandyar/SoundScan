@@ -2,7 +2,7 @@
 
 class Api::AudioUploadsController < ApplicationController
   def create
-    result = Audio::Analyzer.call(upload_file[:audio])
+    result = Audio::Analyzer.call(upload_file.fetch(:audio))
 
     render json: { success: true, result: result }, status: :created
   end
