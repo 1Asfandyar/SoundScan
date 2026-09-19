@@ -18,9 +18,8 @@ module Audio
       @metadata = extract_audio_metadata
       validate_audio_file
       check_if_duplicate
-
       check_if_outlier
-      AnalysisSerializer.call(save_analysis, outliers: @outliers)
+      json_serialize
     end
 
     private
@@ -34,7 +33,7 @@ module Audio
     end
 
     def validate_audio_file
-      raise AudioUploads::InvalidFileError, "Audio file is required" unless valid_mp3_structure?
+      raise AudioUploads::InvalidFileError, "Audio mp3 file is required" unless valid_mp3_structure?
     end
 
     def valid_mp3_structure?
@@ -55,6 +54,10 @@ module Audio
 
       @quality_score = outlier_result[:score]
       @outliers = outlier_result[:outliers]
+    end
+
+    def json_serialize
+      AnalysisSerializer.call(save_analysis, outliers: @outliers)
     end
 
     def save_analysis
