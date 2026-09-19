@@ -1,13 +1,14 @@
 # frozen_string_literal: true
 
 class Api::AudioUploadsController < ApplicationController
-  #   rescue_from AudioUploads::InvalidFileError, with: :render_invalid_file
-  #   rescue_from AudioUploads::AnalysisError, with: :render_analysis_error
+  rescue_from AudioUploads::InvalidFileError, with: :render_invalid_file
+  rescue_from AudioUploads::AnalysisError, with: :render_analysis_error
+  rescue_from AudioUploads::DuplicateError, with: :render_duplicate_error
 
   def create
-    result = Audio::Analyzer.call(params[:audio])
+    result = Audio::Analyzer.call(upload_file[:audio])
 
-    render json: result, status: :created
+    render json: { success: true, result: result }, status: :created
   end
 
   private
@@ -17,10 +18,14 @@ class Api::AudioUploadsController < ApplicationController
   end
 
   def render_invalid_file(error)
-    render json: { error: error.message }, status: :unprocessable_entity
+    render json: { success: false, error: error.message }, status: :unprocessable_entity
   end
 
   def render_analysis_error(error)
-    render json: { error: error.message }, status: :unprocessable_entity
+    render json: { success: false, error: error.message }, status: :unprocessable_entity
+  end
+
+  def render_duplicate_error(error)
+    render json: { success: false, error: error.message }, status: :conflict
   end
 end
