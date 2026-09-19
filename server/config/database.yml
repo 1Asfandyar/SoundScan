@@ -16,10 +16,10 @@
 default: &default
   adapter: postgresql
   encoding: unicode
-  host: localhost
+  host: <%= ENV.fetch("DATABASE_HOST") { "localhost" } %>
   port: 5432
-  username: sound_scan
-  password: <%= ENV["SOUND_SCAN_DATABASE_PASSWORD"] %>
+  username: <%= ENV.fetch("DATABASE_USERNAME") { "sound_scan" } %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD") { ENV["SOUND_SCAN_DATABASE_PASSWORD"] } %>
   max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
 
 development:

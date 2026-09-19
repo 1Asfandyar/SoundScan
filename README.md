@@ -53,7 +53,6 @@ bin/rails db:setup
 bin/rails server
 ```
 
-The analyzer expects an uploaded MP3 file. It uses the file's temporary path while processing, so it is designed to run as part of a normal Rails file upload request rather than as a standalone script.
 
 ## API
 
@@ -61,6 +60,7 @@ The upload flow is used by the JSON API endpoint:
 
 ```http
 POST /api/upload
+Content-Type: multipart/form-data
 ```
 
 The request should include an `audio` file parameter containing an MP3 file.
@@ -90,25 +90,38 @@ If the file cannot be analyzed, the custom analysis error allows the API to retu
 
 ## Testing
 
-The most useful tests for these files are service-level tests. The analyzer should be tested with valid MP3 uploads, invalid files, duplicate uploads, metadata extraction failures, and database save failures.
+To run unit specs execute:
 
-The outlier detector can be tested separately with fake metadata objects. That keeps the scoring rules easy to verify without needing a real audio file for every case.
-
-The serializer should be tested with a saved `AudioUpload` record so the API response stays stable as the project grows.
-
-From the `server` folder, the Rails test suite can be run with:
-
-```sh
-bin/rails test
+```bash
+docker-compose run server bundle exec rspec --format documentation
 ```
 
 ## Architecture
 
-An upload enters through `Audio::Analyzer.call`. The analyzer extracts metadata with `Mp3Info`, rejects invalid MP3 structure, hashes the file contents with SHA-256, and checks the database for an existing upload with the same hash.
+This application is built using a simple, step-by-step pipeline. Instead of putting all the code in one place, it splits the work into readable DRY specialized parts.
 
-After that, `Audio::OutlierDetector` calculates the quality score. Critical rules take priority because they represent stronger signals that the file is outside the expected range. If no critical rule applies, the detector checks moderate rules and subtracts their penalties from a starting score of 10.
+* **The Server (Rails 8 Backend):** It takes the uploaded file (postman request), analyze and save it to database, returns the analysis result.
+* **The Database (PostgreSQL):** It securely stores the file details.
+* **The Container (Docker Compose):** A box that wraps the Server and Database together so the app can run on any computer with just one command.
 
-Once the record is saved, `Audio::AnalysisSerializer` turns the `AudioUpload` model into a small JSON-friendly hash. This keeps API formatting separate from analysis and persistence.
+## The 3 Layers of Defense (Simple Breakdown)
+
+###  1. Controller-Level Checks
+This is the very first line of defense. It first identify params, only permits required ones. Identification of duplicate files including fake or no file attachment is the part of these checks as well.
+
+###  2. Model-Level Validations
+It inspects the details of the data right before saving. If something is wrong, it creates a nice error message (like *"must be a grade between 1 and 10"*) to show to the user.
+
+### 3. DB-Level Constraints
+This is the ultimate, unbreakable layer built directly into our PostgreSQL database. Even if a bug in our code bypasses the first two layers, the database will physically block duplicate or invalid data from corrupting our tables. Few examples are uniqueness constraints, not null contraints etc.
+
+### Step-by-Step File Journey
+When a file is uploaded, it goes through 3 quick steps:
+
+1. **Check for Duplicates:** The app looks at the file's digital fingerprint (SHA-256). If the exact same file was uploaded before, it stops immediately and return.
+2. **Check for Fake Files:** The app opens the file headers using `Mp3Info`. If the file is actually a hidden image or video (like a `.jpg` renamed to `.mp3`), the app catches it and rejects it.
+3. **Calculate the Score:** The app checks the file against our quality rules. It subtracts points for any issues found and outputs the final quality score out of 10.
+
 
 ## Outlier Logic
 
@@ -125,10 +138,11 @@ These signals were chosen because they are available directly from MP3 metadata 
 2. **Originality Verification:** The system assumes that checking the `.mp3` extension along with MP3 header profiles (including emphasis and layer values) is sufficient to verify file originality.
 3. **Tamper Indicators:** The design assumes that a header configuration where `emphasis == 3` or `layer != 3` indicates that a file extension has been tampered with.
 4. **Duplicate Safeguards:** The detection layer assumes duplicate files should be identified solely using an exact matching SHA-256 hash footprint.
+5. **File Storage:** This app only analyze the mp3 file and share results, we dont need to store this file anywhere, app will process, save results and response.
 
 ## Trade-offs
-1. **Fast execution over Deep Inspection**  Used lightweight mp3info for metadata inspection over deep audio inspection which could require more dependencies.
-2. **Easy setup over Production-grade Security** By sticking only to mp3info header checks are acquire simple codebase and requires no extra installation.
+1. **Fast execution over Deep Inspection:**  Used lightweight mp3info for metadata inspection over deep audio inspection which could require more dependencies.
+2. **Easy setup over Production-grade Security:** By sticking only to mp3info header checks are acquire simple codebase and requires no extra installation.
 
 ## Future Improvements
 
