@@ -16,7 +16,6 @@ module Audio
         id: upload.id,
         duplicate: false,
         duration: formatted_duration,
-        duration_seconds: upload.duration,
         is_outlier: upload.is_outlier,
         outliers: outliers,
         quality_score: upload.quality_score,

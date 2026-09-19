@@ -74,7 +74,6 @@ On success, the analyzer returns a response shaped like this:
     "id": 1,
     "duplicate": false,
     "duration": "03:24",
-    "duration_seconds": 204.2,
     "is_outlier": false,
     "outliers": [],
     "quality_score": 10,
