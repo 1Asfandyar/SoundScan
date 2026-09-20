@@ -229,3 +229,5 @@ Future work could add more detailed audio checks, such as loudness, clipping and
 The outlier rules could also be expanded after analyzing the sound, loudness etc.
 
 Dedicated tests for the analyzer, serializer, detector, and rules would make the service safer to change. A later version could also move permanent file storage into Active Storage or another storage service if uploaded audio needs to be kept after analysis.
+
+Dedicated frontend with frontend validations and error handling, would use typescript instead of plain js. Could add frontend specs aswell.
