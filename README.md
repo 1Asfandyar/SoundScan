@@ -31,23 +31,72 @@ The audio work is split into small files so each class has one clear responsibil
 
 ## Getting Started
 
-The easiest way to run the app is with Docker from the project root. On a fresh setup, start the database first, initialize the Rails database, and then start the app.
+This project has two parts:
+
+- backend API in `server/`
+- frontend app in `client/`
+
+The frontend is intentionally run outside Docker during development. The backend runs in Docker, while the React app runs locally with Vite.
+
+### Prerequisites
+
+- Docker Desktop or Docker Engine installed
+- Docker Compose plugin enabled (`docker compose`)
+- Node.js 18+ and npm installed for the frontend
+- Ruby 3.3+ and Bundler only if you want to run Rails locally outside Docker
+
+### Backend setup (Docker)
+
+From the project root, run:
 
 ```sh
-docker-compose up -d db
-docker-compose run --rm server bin/rails db:setup
-docker-compose up --build
+docker compose down -v
+docker compose build --no-cache server
+docker compose up -d db
+docker compose run --rm server bin/rails db:setup
+docker compose up --build
 ```
 
-After the first setup, you can usually run:
+This starts the PostgreSQL database and the Rails API on:
+
+```text
+http://localhost:3000
+```
+
+### Frontend setup (local, outside Docker)
+
+In a second terminal, run:
 
 ```sh
-docker-compose up --build
+cd client
+npm install
+npm run dev
 ```
 
-The API will be available at `http://localhost:3000`.
+This starts the React app on:
 
-If you want to run the Rails app directly on your machine instead, you can still do it from the `server` folder:
+```text
+http://localhost:5173
+```
+
+### Normal workflow
+
+Start the backend:
+
+```sh
+docker compose up --build
+```
+
+Then in a second terminal, start the frontend:
+
+```sh
+cd client
+npm run dev
+```
+
+### Local backend setup (optional)
+
+If you want to run the Rails app directly on your machine instead of Docker, use the `server` folder:
 
 ```sh
 cd server
@@ -55,6 +104,30 @@ bundle install
 bin/rails db:setup
 bin/rails server
 ```
+
+### Troubleshooting
+
+If you see `Bundler::GemNotFound`, the Ruby gems were not installed successfully. Rebuild the backend image:
+
+```sh
+docker compose build --no-cache server
+```
+
+If the database is missing or the app cannot connect, run:
+
+```sh
+docker compose run --rm server bin/rails db:setup
+```
+
+If the frontend has missing packages or install issues, run:
+
+```sh
+cd client
+rm -rf node_modules package-lock.json
+npm install
+```
+
+If you are using the older standalone Compose command, `docker-compose` can usually be swapped for `docker compose` with the same arguments.
 
 ## API
 ### Call with Postman
