@@ -153,8 +153,6 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-If you are using the older standalone Compose command, `docker-compose` can usually be swapped for `docker compose` with the same arguments.
-
 # API
 
 ## Call with Postman
@@ -197,7 +195,7 @@ Added unit specs in two files:
 To run unit specs execute:
 
 ```bash
-docker-compose run --rm -e RAILS_ENV=test server bundle exec rspec --format documentation
+docker compose run --rm -e RAILS_ENV=test server bundle exec rspec --format documentation
 ```
 
 # Architecture
