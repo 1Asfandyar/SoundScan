@@ -29,7 +29,7 @@ The audio work is split into small files so each class has one clear responsibil
 
 `AudioUploads::AnalysisError` is used when metadata extraction or saving the analysis fails. It gives the upload flow a specific error type instead of exposing low-level exceptions directly.
 
-## Getting Started
+# Getting Started
 
 This project has two parts:
 
@@ -38,14 +38,14 @@ This project has two parts:
 
 The frontend is intentionally run outside Docker during development. The backend runs in Docker, while the React app runs locally with Vite.
 
-### Prerequisites
+## Prerequisites
 
 - Docker Desktop or Docker Engine installed
 - Docker Compose plugin enabled (`docker compose`)
 - Node.js 18+ and npm installed for the frontend
 - Ruby 3.3+ and Bundler only if you want to run Rails locally outside Docker
 
-### Backend setup (Docker)
+## Backend Setup (Docker)
 
 From the project root, run:
 
@@ -63,7 +63,7 @@ This starts the PostgreSQL database and the Rails API on:
 http://localhost:3000
 ```
 
-### Frontend setup (local, outside Docker)
+## Frontend Setup (Local, Outside Docker)
 
 In a second terminal, run:
 
@@ -79,7 +79,7 @@ This starts the React app on:
 http://localhost:5173
 ```
 
-### Normal workflow
+## Normal Workflow
 
 Start the backend:
 
@@ -94,7 +94,7 @@ cd client
 npm run dev
 ```
 
-### Local backend setup (optional)
+## Local Backend Setup (Optional)
 
 If you want to run the Rails app directly on your machine instead of Docker, use the `server` folder:
 
@@ -105,7 +105,9 @@ bin/rails db:setup
 bin/rails server
 ```
 
-### Troubleshooting
+## Troubleshooting
+
+### `Bundler::GemNotFound`
 
 If you see `Bundler::GemNotFound`, the Ruby gems were not installed successfully. Rebuild the backend image:
 
@@ -113,11 +115,35 @@ If you see `Bundler::GemNotFound`, the Ruby gems were not installed successfully
 docker compose build --no-cache server
 ```
 
+### `Errno::EACCES` while creating `/rails/tmp/cache` (This error did not happen on my machine, but it occurred on a separate laptop and was fixed with the solution below. (ai solution))
+
+If Rails exits with `Errno::EACCES` while creating `/rails/tmp/cache`, this is a Docker file-permission issue. The mounted project folder is owned by a different user than the Rails process inside the container.
+
+Run the following from the project root before starting the backend:
+
+```sh
+export UID=$(id -u)
+export GID=$(id -g)
+docker compose down
+docker compose up --build
+```
+
+If the problem still appears, fix ownership on the host and recreate the temp folders:
+
+```sh
+sudo chown -R "$(id -u)":"$(id -g)" server
+chmod -R u+rwX server/tmp server/log server/storage
+```
+
+### Database connection issues
+
 If the database is missing or the app cannot connect, run:
 
 ```sh
 docker compose run --rm server bin/rails db:setup
 ```
+
+### Frontend install issues
 
 If the frontend has missing packages or install issues, run:
 
@@ -129,8 +155,9 @@ npm install
 
 If you are using the older standalone Compose command, `docker-compose` can usually be swapped for `docker compose` with the same arguments.
 
-## API
-### Call with Postman
+# API
+
+## Call with Postman
 To test this endpoint using Postman, configure your request using the following steps:
 1. Set the HTTP method dropdown to POST
 2. Enter your API endpoint URL (e.g., http://localhost:3000/api/upload).
@@ -161,7 +188,8 @@ On success, the analyzer returns a response shaped like this:
 }
 ```
 
-## Testing
+# Testing
+
 Added unit specs in two files:
 - `server/spec/models/audio_upload_spec.rb`
 - `server/spec/requests/api/audio_uploads_spec.rb`
@@ -172,7 +200,7 @@ To run unit specs execute:
 docker-compose run --rm -e RAILS_ENV=test server bundle exec rspec --format documentation
 ```
 
-## Architecture
+# Architecture
 
 This application is built using a simple, step-by-step pipeline. Instead of putting all the code in one place, it splits the work into readable DRY specialized parts.
 
@@ -201,7 +229,7 @@ When a file is uploaded, it goes through 3 quick steps:
 3. **Calculate the Score:** The app checks the file against our quality rules. It subtracts points for any issues found and outputs the final quality score out of 10.
 
 
-## Outlier Logic
+# Outlier Logic
 
 We have two types of outliers, the critical and the moderate outlier, each containing two seperate parameters to identify where it lies. The outlier logic is assuming that we have unusual duration, bitrate, or sample rate values that signals that an MP3 may not be of a normal-quality.
 
@@ -211,18 +239,18 @@ If no critical rule matches, the detector checks moderate rules instead. A bitra
 
 These signals were chosen because they are available directly from MP3 metadata and are quick to evaluate. Duration catches files that are too short to be useful or too long for the expected upload range, bitrate helps flag very low-quality or unusually large files, and sample rate helps catch audio that may sound poor or be encoded below normal expectations.
 
-## Assumptions
+# Assumptions
 1. **Format Scope:** The current implementation assumes that our system only analyzes and processes MP3 music files with a maximum duration of 15 minutes.
 2. **Originality Verification:** The system assumes that checking the `.mp3` extension along with MP3 header profiles (including emphasis and layer values) is sufficient to verify file originality.
 3. **Tamper Indicators:** The design assumes that a header configuration where `emphasis == 3` or `layer != 3` indicates that a file extension has been tampered with.
 4. **Duplicate Safeguards:** The detection layer assumes duplicate files should be identified solely using an exact matching SHA-256 hash footprint.
 5. **File Storage:** This app only analyze the mp3 file and share results, we dont need to store this file anywhere, app will process, save results and response.
 
-## Trade-offs
+# Trade-offs
 1. **Fast execution over Deep Inspection:**  Used lightweight mp3info for metadata inspection over deep audio inspection which could require more dependencies.
 2. **Easy setup over Production-grade Security:** By sticking only to mp3info header checks are acquire simple codebase and requires no extra installation.
 
-## Future Improvements
+# Future Improvements
 
 Future work could add more detailed audio checks, such as loudness, clipping and analyzing sound.
 
